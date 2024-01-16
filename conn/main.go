@@ -26,6 +26,7 @@ func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 	fmt.Printf("Connected to %s\n", conn.RemoteAddr().String())
 	fmt.Printf("Enter Request: ")
+
 	for scanner.Scan() {
 
 		req := scanner.Text()

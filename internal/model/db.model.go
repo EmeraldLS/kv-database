@@ -9,6 +9,33 @@ import (
 
 var errNotFound = errors.New("no result found")
 
+type DatabaseCompass struct {
+	store map[string]*Database
+	mu    sync.RWMutex
+}
+
+func NewDatabaseCompass() *DatabaseCompass {
+	return &DatabaseCompass{
+		store: make(map[string]*Database),
+	}
+}
+
+func (dc *DatabaseCompass) NewDatabase() *Database {
+	db := NewDatabase()
+	dc.mu.Lock()
+	defer dc.mu.Unlock()
+
+	dc.store[db.GetId()] = db
+	return db
+}
+
+func (dc *DatabaseCompass) GetDatabase(id string) *Database {
+	dc.mu.RLock()
+	defer dc.mu.RUnlock()
+
+	return dc.store[id]
+}
+
 type Database struct {
 	id    string
 	name  string
@@ -88,4 +115,24 @@ func (db *Database) Remove(key string) error {
 
 	delete(db.store, key)
 	return nil
+}
+
+/*
+	Response Formats
+*/
+
+type DefaultResponseFormat struct {
+	Message string `json:"message"`
+}
+
+func NewDefaultResponseFormat(msg string) *DefaultResponseFormat {
+	return &DefaultResponseFormat{
+		Message: msg,
+	}
+}
+
+type DatabaseContentResponse struct {
+	Id      string                 `json:"id"`
+	Name    string                 `json:"names"`
+	Content map[string]interface{} `json:"content"`
 }
