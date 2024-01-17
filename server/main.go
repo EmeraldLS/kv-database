@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 
-	"github.com/EmeraldLS/kv-db/internal/repository"
+	"github.com/EmeraldLS/kv-db/server/repository"
 )
 
 func main() {

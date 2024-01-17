@@ -9,33 +9,6 @@ import (
 
 var errNotFound = errors.New("no result found")
 
-type DatabaseCompass struct {
-	store map[string]*Database
-	mu    sync.RWMutex
-}
-
-func NewDatabaseCompass() *DatabaseCompass {
-	return &DatabaseCompass{
-		store: make(map[string]*Database),
-	}
-}
-
-func (dc *DatabaseCompass) NewDatabase() *Database {
-	db := NewDatabase()
-	dc.mu.Lock()
-	defer dc.mu.Unlock()
-
-	dc.store[db.GetId()] = db
-	return db
-}
-
-func (dc *DatabaseCompass) GetDatabase(id string) *Database {
-	dc.mu.RLock()
-	defer dc.mu.RUnlock()
-
-	return dc.store[id]
-}
-
 type Database struct {
 	id    string
 	name  string
@@ -51,6 +24,10 @@ func NewDatabase() *Database {
 	}
 }
 
+func (db *Database) WithName(name string) {
+	db.name = name
+}
+
 func (db *Database) GetId() string {
 	return db.id
 }
@@ -61,10 +38,6 @@ func (db *Database) GetName() string {
 
 func (db *Database) GetContent() map[string]interface{} {
 	return db.store
-}
-
-func (db *Database) WithName(name string) {
-	db.name = name
 }
 
 func (db *Database) Insert(key string, value interface{}) {
@@ -125,10 +98,17 @@ type DefaultResponseFormat struct {
 	Message string `json:"message"`
 }
 
-func NewDefaultResponseFormat(msg string) *DefaultResponseFormat {
+// The default message is "database id not provided"
+// I didnt this way, because most of the response are returning database id not provided
+// If you wanna add a custom message, use WithMessage method
+func NewDefaultResponseFormat() *DefaultResponseFormat {
 	return &DefaultResponseFormat{
-		Message: msg,
+		Message: "database id not provided",
 	}
+}
+
+func (drf *DefaultResponseFormat) WithMessage(msg string) {
+	drf.Message = msg
 }
 
 type DatabaseContentResponse struct {

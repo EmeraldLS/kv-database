@@ -1,22 +1,21 @@
 package handler
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net"
 	"os"
 	"strings"
 	"sync"
 
-	"github.com/EmeraldLS/kv-db/internal/model"
+	"github.com/EmeraldLS/kv-db/server/model"
+	"github.com/EmeraldLS/kv-db/server/utils"
 )
 
 var databaseCompass = make(map[string]*model.Database, 0)
 
-func CreateDB(req []string, conn net.Conn) {
+func CreateDatabase(req []string, conn net.Conn) {
 	var db *model.Database
 	if len(req) == 1 {
 		db = model.NewDatabase()
@@ -24,16 +23,14 @@ func CreateDB(req []string, conn net.Conn) {
 		db = model.NewDatabase()
 		db.WithName(req[1])
 	}
+	mu := sync.Mutex{}
+	mu.Lock()
+	defer mu.Unlock()
 
 	databaseCompass[db.GetId()] = db
 
-	type db_detail struct {
-		ID   string `json:"id"`
-		Name string `json:"name"`
-	}
-
-	response := db_detail{
-		ID:   db.GetId(),
+	response := model.DatabaseContentResponse{
+		Id:   db.GetId(),
 		Name: db.GetName(),
 	}
 
@@ -48,7 +45,7 @@ func CreateDB(req []string, conn net.Conn) {
 	}
 }
 
-func InserOneInDatabase(reqSlice []string, conn net.Conn) {
+func InserOneDatabase(reqSlice []string, conn net.Conn) {
 	if len(reqSlice) >= 4 {
 		db_id := reqSlice[1]
 		var mu sync.Mutex
@@ -61,60 +58,25 @@ func InserOneInDatabase(reqSlice []string, conn net.Conn) {
 		if db.GetId() == db_id {
 			key := reqSlice[2]
 			val := strings.Join(reqSlice[3:], " ")
-
-			fmt.Println("Value: ", val)
-
-			var buf bytes.Buffer
-			_, err := buf.Write([]byte("xx"))
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			json.NewEncoder(&buf)
 			db.Insert(key, val)
 
 			resp := &model.DefaultResponseFormat{
 				Message: "document inserted successfully",
 			}
-			data, err := json.Marshal(resp)
-			if err != nil {
-				log.Println("unable to marshal into json: ", err)
-			}
-
-			_, err = conn.Write(data)
-			if err != nil {
-				log.Println("unable to write data: ", err)
-			}
+			utils.SendResponse(resp, conn)
 		}
 	}
 }
 
-func FindOne(req []string, conn net.Conn) {
+func FindOneDatabase(req []string, conn net.Conn) {
 	if len(req) >= 2 {
 		id := req[1]
 		var mu sync.RWMutex
 		mu.RLock()
 		defer mu.RUnlock()
 
-		db := databaseCompass[id]
-		fmt.Println(db)
-		if db != nil {
-
-			dbContent := db.GetContent()
-
-			var buf bytes.Buffer
-
-			for _, v := range dbContent {
-				n, err := buf.Read([]byte(v.(string)))
-				if err == io.EOF {
-					break
-				}
-				if err != nil {
-					log.Fatal(err)
-				}
-
-				log.Printf("Read %d into the buffer", n)
-			}
+		db, ok := databaseCompass[id]
+		if ok {
 
 			resp := &model.DatabaseContentResponse{
 				Id:      id,
@@ -137,17 +99,14 @@ func FindOne(req []string, conn net.Conn) {
 			resp := &model.DefaultResponseFormat{
 				Message: "no database with provided id",
 			}
-			data, err := json.Marshal(resp)
-			if err != nil {
-				log.Println("Unable to marshal into json:", err)
-			}
-
-			_, err = conn.Write(data)
-			if err != nil {
-				log.Println("unable to send data: ", err)
-			}
+			utils.SendResponse(resp, conn)
 
 		}
+	} else {
+		resp := &model.DefaultResponseFormat{
+			Message: "database id not provided",
+		}
+		utils.SendResponse(resp, conn)
 	}
 }
 
@@ -156,34 +115,17 @@ func Defaulthandler(conn net.Conn) {
 	resp := &model.DefaultResponseFormat{
 		Message: "invalid operation",
 	}
-
-	data, err := json.Marshal(resp)
-	if err != nil {
-		log.Println("Unable to marshal into json:", err)
-	}
-
-	_, err = conn.Write(data)
-	if err != nil {
-		log.Println("unable to send data: ", err)
-	}
+	utils.SendResponse(resp, conn)
 }
 
-func FailAndSendErrResponseToConn(conn net.Conn, msg string, err error) {
-	if err != nil {
-		var resp = model.NewDefaultResponseFormat(msg)
-		respByte, _ := json.Marshal(resp)
-
-		_, err = conn.Write(respByte)
-		if err != nil {
-			log.Fatal(err)
-		}
-		return
-	}
-}
-
-func Save(req []string, conn net.Conn) {
-	if len(req) == 2 {
+func SaveDatabase(req []string, conn net.Conn) {
+	if len(req) >= 2 {
 		id := req[1]
+		mu := sync.Mutex{}
+
+		mu.Lock()
+		defer mu.Unlock()
+
 		db := databaseCompass[id]
 		if db != nil {
 
@@ -208,15 +150,41 @@ func Save(req []string, conn net.Conn) {
 				log.Fatal(err)
 			}
 
-			respMsg := model.NewDefaultResponseFormat("db content saved successfully")
-			respMsgByte, err := json.Marshal(respMsg)
-			if err != nil {
-				log.Fatal(err)
-			}
-			_, err = conn.Write(respMsgByte)
-			if err != nil {
-				log.Fatal(err)
-			}
+			respMsg := model.NewDefaultResponseFormat()
+			respMsg.WithMessage("database saved successfully")
+			utils.SendResponse(respMsg, conn)
+
 		}
+	} else {
+		respMsg := model.NewDefaultResponseFormat()
+		utils.SendResponse(respMsg, conn)
+	}
+}
+
+func DeleteDatabase(req []string, conn net.Conn) {
+	if len(req) == 2 {
+		id := req[1]
+		mu := sync.Mutex{}
+
+		mu.Lock()
+		defer mu.Unlock()
+
+		_, ok := databaseCompass[id]
+		if ok {
+			delete(databaseCompass, id)
+			respMsg := model.NewDefaultResponseFormat()
+			respMsg.WithMessage("database delete successfully")
+
+			utils.SendResponse(respMsg, conn)
+
+		} else {
+			respMsg := model.NewDefaultResponseFormat()
+			respMsg.WithMessage("database not found")
+
+			utils.SendResponse(respMsg, conn)
+		}
+	} else {
+		respMsg := model.NewDefaultResponseFormat()
+		utils.SendResponse(respMsg, conn)
 	}
 }

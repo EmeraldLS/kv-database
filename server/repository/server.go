@@ -6,7 +6,7 @@ import (
 	"net"
 	"strings"
 
-	"github.com/EmeraldLS/kv-db/internal/handler"
+	"github.com/EmeraldLS/kv-db/server/handler"
 )
 
 func Listen(port string) {
@@ -50,19 +50,22 @@ func handleConn(conn net.Conn) {
 
 		switch method {
 		case "CREATE":
-			handler.CreateDB(reqSlice, conn)
+			handler.CreateDatabase(reqSlice, conn)
 
 		case "INSERT":
-			handler.InserOneInDatabase(reqSlice, conn)
+			handler.InserOneDatabase(reqSlice, conn)
 
 		case "FIND":
-			conn.Write([]byte("you suck"))
+			conn.Write([]byte(""))
 
 		case "FINDONE":
-			handler.FindOne(reqSlice, conn)
+			handler.FindOneDatabase(reqSlice, conn)
 
 		case "SAVE":
-			handler.Save(reqSlice, conn)
+			handler.SaveDatabase(reqSlice, conn)
+
+		case "DELETE":
+			handler.DeleteDatabase(reqSlice, conn)
 
 		default:
 			handler.Defaulthandler(conn)

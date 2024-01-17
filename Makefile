@@ -1,7 +1,7 @@
-db-serve:
-	go run internal/main.go -p 3032
+db-server:
+	go run server/main.go -p 3032
 
-connect-db:
-	go run conn/main.go -addr 3032
+db-client:
+	go run client/main.go -addr 3032
 
-.PHONY: db-server connect-db
+.PHONY: db-server db-client
