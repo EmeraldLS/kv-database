@@ -16,19 +16,22 @@ import (
 
 func main() {
 	addr := flag.String("addr", "3031", "port server is binding to")
+	ip := flag.String("ip", "127.0.0.1", "ip address server is binding to")
 	flag.Parse()
 
-	conn, err := net.Dial("tcp", "127.0.0.1:"+*addr)
+	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%s", *ip, *addr))
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer conn.Close()
+
+	fmt.Printf("Connected to %s\n", conn.RemoteAddr().String())
 
 	scanner := bufio.NewScanner(os.Stdin)
-	fmt.Printf("Connected to %s\n", conn.RemoteAddr().String())
-	fmt.Printf("Enter Request: ")
+	for {
 
-	for scanner.Scan() {
-
+		fmt.Printf("Enter Request: ")
+		scanner.Scan()
 		req := scanner.Text()
 		if req == "!q" {
 			break
@@ -49,8 +52,6 @@ func main() {
 
 		handle_response(buf, n)
 
-		fmt.Print("Enter Request: ")
-		defer conn.Close()
 		signals := make(chan os.Signal, 1)
 		signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
 		go func() {

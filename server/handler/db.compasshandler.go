@@ -140,7 +140,12 @@ func SaveDatabase(req []string, conn net.Conn) {
 				log.Fatal(err)
 			}
 
-			file, err := os.OpenFile(fmt.Sprintf("db-%s.json", id), os.O_APPEND|os.O_CREATE|os.O_RDWR, os.ModePerm)
+			err = os.MkdirAll("./databases", os.ModePerm)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			file, err := os.OpenFile(fmt.Sprintf("./databases/db-%s.json", id), os.O_CREATE|os.O_RDWR, os.ModePerm)
 			if err != nil {
 				log.Fatal(err)
 			}

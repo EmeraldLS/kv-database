@@ -12,4 +12,8 @@ WORKDIR /app/server
 
 COPY --from=builder /app/server/server_app .
 
+EXPOSE 3031
+
+ENTRYPOINT [ "./server_app" ]
+
 CMD ["./server_app"]
