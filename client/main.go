@@ -18,7 +18,7 @@ func main() {
 	addr := flag.String("addr", "3031", "port server is binding to")
 	flag.Parse()
 
-	conn, err := net.Dial("tcp", "0.0.0.0:"+*addr)
+	conn, err := net.Dial("tcp", "127.0.0.1:"+*addr)
 	if err != nil {
 		log.Fatal(err)
 	}

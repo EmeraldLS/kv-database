@@ -1,0 +1,15 @@
+FROM golang:alpine as builder
+
+WORKDIR /app/client
+
+COPY . .
+
+RUN go build -o client_app client/main.go
+
+FROM alpine:latest
+
+WORKDIR /app/client
+
+COPY --from=builder /app/client/client_app .
+
+CMD ["./client_app"]
